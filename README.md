@@ -14,7 +14,6 @@ Otomatisasi Presensi (Check-in & Check-out) PRMS dengan Dukungan Jadwal Cron, No
   - Notifikasi real-time saat check-in, check-out, atau ada error.
   - Perintah manual via chat Telegram (`/checkin`, `/checkout`, `/status`, dll).
 - 🐳 **Docker Support**: Dilengkapi `Dockerfile` untuk deployment cepat & terisolasi di VPS.
-- ⚡ **Health Check Server**: Built-in HTTP server ringan untuk cloud platform health checking.
 
 ---
 
@@ -97,7 +96,6 @@ Rekomendasi terbaik untuk menjalankan aplikasi 24/7 di VPS (seperti Tencent Clou
      --name prms-bot \
      --restart always \
      --env-file .env \
-     -p 3000:3000 \
      prms-bot
    ```
 
