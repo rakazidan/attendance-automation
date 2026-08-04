@@ -962,15 +962,5 @@ process.on("SIGINT", () => {
   process.exit(0);
 });
 
-// ponytail: Dummy HTTP server for Render.com free tier health check.
-// Known limitation: dummy server only responds to GET / with HTTP 200 OK.
-// Upgrade path: implement proper web framework or webhook endpoints if real web API is needed.
-const http = require("http");
-const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("PRMS Auto Attendance is active.");
-}).listen(PORT, () => {
-  log(`Health check server listening on port ${PORT}`);
-});
+
 
