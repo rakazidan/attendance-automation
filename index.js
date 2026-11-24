@@ -296,6 +296,32 @@ if (CONFIG.telegramToken && CONFIG.telegramChatId) {
   log("Telegram Bot NOT initialized (TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing).");
 }
 
+function formatAttendanceMessage(title, type, result, extraLine = "") {
+  const att = result?.attendance || result || {};
+  const isOut = type === "checkout";
+  const rawTime = isOut ? att.checkOutTime : att.checkInTime;
+  const waktu = rawTime
+    ? new Date(rawTime).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })
+    : getTimestamp();
+  const area = (isOut ? att.checkOutArea?.name : att.checkInArea?.name) || "-";
+  const lat = isOut ? att.checkOutLat : att.checkInLat;
+  const lng = isOut ? att.checkOutLng : att.checkInLng;
+  const coords =
+    lat != null && lng != null
+      ? `${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`
+      : "-";
+
+  const lines = [
+    `✅ <b>${title}</b>`,
+    `• Waktu: <code>${waktu}</code>`,
+    `• Area: ${area}`,
+  ];
+  if (isOut) lines.push(`• Note: ${att.checkOutNote || "-"}`);
+  lines.push(`• Koordinat: <code>${coords}</code>`);
+  if (extraLine) lines.push(extraLine);
+  return lines.join("\n");
+}
+
 async function sendTelegramNotification(message) {
   if (!bot) return;
   try {
@@ -434,7 +460,7 @@ if (bot) {
             return;
           }
           const result = await checkIn(token);
-          await bot.sendMessage(chatId, `✅ <b>Check-in manual berhasil!</b>\nResponse: <code>${JSON.stringify(result)}</code>`, { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, formatAttendanceMessage("Check-in Manual Berhasil!", "checkin", result), { parse_mode: "HTML" });
         } catch (err) {
           await bot.sendMessage(chatId, `❌ <b>Check-in manual gagal:</b> ${err.message}`, { parse_mode: "HTML" });
         }
@@ -443,13 +469,8 @@ if (bot) {
         await bot.sendMessage(chatId, "Menginisiasi check-out manual instan sekarang...", { parse_mode: "HTML" });
         try {
           const token = await getValidToken();
-          const status = await getAttendanceStatus(token);
-          if (status.checkedOut) {
-            await bot.sendMessage(chatId, "Sudah check-out hari ini, aksi dibatalkan.", { parse_mode: "HTML" });
-            return;
-          }
           const result = await checkOut(token);
-          await bot.sendMessage(chatId, `✅ <b>Check-out manual berhasil!</b>\nResponse: <code>${JSON.stringify(result)}</code>`, { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, formatAttendanceMessage("Check-out Manual Berhasil!", "checkout", result), { parse_mode: "HTML" });
         } catch (err) {
           await bot.sendMessage(chatId, `❌ <b>Check-out manual gagal:</b> ${err.message}`, { parse_mode: "HTML" });
         }
@@ -586,7 +607,7 @@ async function checkIn(token) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(
-      `Check-in failed: ${response.status} - ${JSON.stringify(data)}`
+      `Check-in failed (${response.status}): ${data.message || data.error || JSON.stringify(data)}`
     );
   }
 
@@ -628,7 +649,7 @@ async function checkOut(token) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(
-      `Check-out failed: ${response.status} - ${JSON.stringify(data)}`
+      `Check-out failed (${response.status}): ${data.message || data.error || JSON.stringify(data)}`
     );
   }
 
@@ -732,7 +753,14 @@ async function executeCheckIn() {
       const result = await checkIn(token);
 
       log("Check-in flow selesai!\n");
-      await sendTelegramNotification(`✅ <b>Check-in Berhasil!</b>\n• Jam: <code>${getTimestamp()}</code>${attempt > 1 ? `\n• Berhasil setelah ${attempt} percobaan` : ""}\n• Koordinat: <code>${result.checkInLat || "-"}, ${result.checkInLng || "-"}</code>`);
+      await sendTelegramNotification(
+        formatAttendanceMessage(
+          "Check-in Berhasil!",
+          "checkin",
+          result,
+          attempt > 1 ? `• Percobaan: ${attempt}x` : ""
+        )
+      );
       return;
     } catch (err) {
       lastError = err;
@@ -835,7 +863,14 @@ async function executeCheckOut() {
       const result = await checkOut(token);
 
       log("Check-out flow selesai!\n");
-      await sendTelegramNotification(`✅ <b>Check-out Berhasil!</b>\n• Jam: <code>${getTimestamp()}</code>${attempt > 1 ? `\n• Berhasil setelah ${attempt} percobaan` : ""}\n• Note: "${result.checkOutNote || "-"}"\n• Koordinat: <code>${result.checkOutLat || "-"}, ${result.checkOutLng || "-"}</code>`);
+      await sendTelegramNotification(
+        formatAttendanceMessage(
+          "Check-out Berhasil!",
+          "checkout",
+          result,
+          attempt > 1 ? `• Percobaan: ${attempt}x` : ""
+        )
+      );
       return;
     } catch (err) {
       lastError = err;
